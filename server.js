@@ -76,12 +76,19 @@ const UserSchema = new mongoose.Schema({
   },
 });
 
+const ColumnSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    default: "To Do",
+  },
+});
+
 const Task = mongoose.model("Task", TaskSchema);
 const Tag = mongoose.model("Tag", TagSchema);
 const User = mongoose.model("User", UserSchema);
-// __________________________________________________________________
+const Column = mongoose.model("Column", ColumnSchema);
 
-// Write your endpoints below:
 // TASKS
 app.get("/tasks", async (req, res) => {
   const { assignee, column, tags, page, perPage } = req.query;
@@ -184,7 +191,6 @@ app.put("/tasks/:taskId", async (req, res) => {
     });
   }
 });
-// __________________________________________________________________
 
 // TAGS
 app.get("/tags", async (req, res) => {
@@ -239,7 +245,6 @@ app.put("/tags/:tagId", async (req, res) => {
     });
   }
 });
-// __________________________________________________________________
 
 // USERS
 app.get("/users", async (req, res) => {
@@ -277,6 +282,7 @@ app.post("/users", async (req, res) => {
 
 // v2
 
+//  v1
 app.put("/users/:userId", async (req, res) => {
   const { userId } = req.params;
   const { name, description, imageURL } = req.body;
@@ -299,7 +305,63 @@ app.put("/users/:userId", async (req, res) => {
   }
 });
 
-// __________________________________________________________________
+// v2
+
+// COLUMNS
+app.get("/columns", async (req, res) => {
+  try {
+    const column = await Column.find({});
+    res.status(200).json({
+      data: column,
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      data: error,
+      success: false,
+    });
+  }
+});
+
+app.post("/columns", async (req, res) => {
+  const { name } = req.body;
+
+  try {
+    const column = await new Column({ name }).save();
+    res.status(201).json({
+      data: column,
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      data: error,
+      success: false,
+    });
+  }
+});
+
+app.put("/columns/:columnId", async (req, res) => {
+  const { columnId } = req.params;
+  const { name } = req.body;
+
+  try {
+    const column = await Column.findByIdAndUpdate(
+      columnId,
+      { name },
+      { new: true, runValidators: true }
+    );
+    res.status(201).json({
+      data: column,
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      data: error,
+      success: false,
+    });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });
