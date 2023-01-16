@@ -47,11 +47,38 @@ const TaskSchema = new mongoose.Schema({
   },
   comments: {
     type: Array,
-    required: false,
+  },
+});
+
+const TagSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: [true, "Tag has to have a title"],
+  },
+  color: {
+    type: String,
+    required: [true, "Tag has to have a color assigned"],
+  },
+});
+
+const UserSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: [true, "User has to have a name"],
+  },
+  description: {
+    type: String,
+    required: [true, "User has to have a description"],
+  },
+  imageURL: {
+    type: String,
+    required: [true, "User has to have an avatar"],
   },
 });
 
 const Task = mongoose.model("Task", TaskSchema);
+const Tag = mongoose.model("Tag", TagSchema);
+const User = mongoose.model("User", UserSchema);
 // __________________________________________________________________
 
 // Write your endpoints below:
@@ -127,7 +154,7 @@ app.post("/tasks", async (req, res) => {
   }
 });
 
-app.put("tasks/:taskId", async (req, res) => {
+app.put("/tasks/:taskId", async (req, res) => {
   const { taskId } = req.params;
   const {
     title,
@@ -139,7 +166,6 @@ app.put("tasks/:taskId", async (req, res) => {
     column,
     comments,
   } = req.body;
-  console.log(taskId);
 
   try {
     const task = await Task.findByIdAndUpdate(
@@ -152,7 +178,23 @@ app.put("tasks/:taskId", async (req, res) => {
       success: true,
     });
   } catch (error) {
-    console.log(error);
+    res.status(400).json({
+      data: error,
+      success: false,
+    });
+  }
+});
+// __________________________________________________________________
+
+// TAGS
+app.get("/tags", async (req, res) => {
+  try {
+    const tags = await Tag.find({});
+    res.status(200).json({
+      data: tags,
+      success: true,
+    });
+  } catch (error) {
     res.status(400).json({
       data: error,
       success: false,
@@ -160,6 +202,104 @@ app.put("tasks/:taskId", async (req, res) => {
   }
 });
 
+app.post("/tags", async (req, res) => {
+  const { name, color } = req.body;
+  try {
+    const tag = await new Tag({ name, color }).save();
+    res.status(201).json({
+      data: tag,
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      data: error,
+      success: false,
+    });
+  }
+});
+
+app.put("/tags/:tagId", async (req, res) => {
+  const { tagId } = req.params;
+  const { name, color } = req.body;
+
+  try {
+    const tag = await Tag.findByIdAndUpdate(
+      tagId,
+      { name, color },
+      { new: true, runValidators: true }
+    );
+    res.status(201).json({
+      data: tag,
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      data: error,
+      success: false,
+    });
+  }
+});
+// __________________________________________________________________
+
+// USERS
+app.get("/users", async (req, res) => {
+  try {
+    const users = await User.find({});
+    res.status(200).json({
+      data: users,
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      data: error,
+      success: false,
+    });
+  }
+});
+
+// v1
+app.post("/users", async (req, res) => {
+  const { name, description, imageURL } = req.body;
+
+  try {
+    const user = await new User({ name, description, imageURL }).save();
+    res.status(201).json({
+      data: user,
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      data: error,
+      success: false,
+    });
+  }
+});
+
+// v2
+
+app.put("/users/:userId", async (req, res) => {
+  const { userId } = req.params;
+  const { name, description, imageURL } = req.body;
+
+  try {
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { name, description, imageURL },
+      { new: true, runValidators: true }
+    );
+    res.status(201).json({
+      data: user,
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      data: error,
+      success: false,
+    });
+  }
+});
+
+// __________________________________________________________________
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });
