@@ -117,7 +117,7 @@ app.get("/tasks", async (req, res) => {
   const { assignee, column, tags, page, perPage } = req.query;
 
   const query = {
-    ...(assignee && { title: new RegExp(assignee, "i") }),
+    ...(assignee && { assignee: new RegExp(assignee, "i") }),
     ...(column && { column: new RegExp(column, "i") }),
     ...(tags && { tags: new RegExp(tags, "i") }),
   };
@@ -141,7 +141,7 @@ app.get("/tasks", async (req, res) => {
       {
         $lookup: {
           from: "users",
-          localField: "user",
+          localField: "assignee",
           foreignField: "_id",
           as: "assignee",
         },
@@ -328,9 +328,8 @@ app.get("/users", async (req, res) => {
 // });
 
 // v2
-app.post("/users", parser.single("image"), async (req, res) => {
-  const { name, description, imageURL } = req.body;
-
+app.post("/users", parser.single("imageURL"), async (req, res) => {
+  const { name, description } = req.body;
   try {
     const user = await new User({
       name,
@@ -373,9 +372,9 @@ app.post("/users", parser.single("image"), async (req, res) => {
 // });
 
 // v2
-app.put("/users/:userId", parser.single("image"), async (req, res) => {
+app.put("/users/:userId", parser.single("imageURL"), async (req, res) => {
   const { userId } = req.params;
-  const { name, description, imageURL } = req.body;
+  const { name, description } = req.body;
 
   try {
     const user = await User.findByIdAndUpdate(
