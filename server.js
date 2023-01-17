@@ -2,8 +2,30 @@ import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import cloudinaryFramework from "cloudinary";
+import multer from "multer";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
 
 dotenv.config();
+
+const cloudinary = cloudinaryFramework.v2;
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: "users",
+    allowedFormats: ["jpg", "png"],
+    transformation: [{ width: 500, height: 500, crop: "limit" }],
+  },
+});
+
+const parser = multer({ storage });
 
 const mongoUrl = process.env.MONGO_URL || "mongodb://localhost/todo";
 mongoose.connect(mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true });
@@ -29,21 +51,22 @@ const TaskSchema = new mongoose.Schema({
     required: [true, "Task has to have a link attached"],
   },
   tags: {
-    type: Array,
-    required: [true, "Task has to have tag(s) attached"],
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "Tag",
+    required: [true, "Task has to have tag(s) assigned"],
   },
   dueDate: {
     type: Date,
     default: new Date().toDateString(),
   },
   assignee: {
-    type: "String",
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "User",
     required: [true, "Task has to have an assignee"],
   },
   column: {
-    type: String,
-    required: [true, "Task has to be assigned to a specific column"],
-    // default: ,
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "Column",
   },
   comments: {
     type: Array,
@@ -79,8 +102,8 @@ const UserSchema = new mongoose.Schema({
 const ColumnSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: true,
-    default: "To Do",
+    required: [true, "Task has to be assigned to a specific column"],
+    default: "63c5a31259d32b3977152962",
   },
 });
 
@@ -107,12 +130,30 @@ app.get("/tasks", async (req, res) => {
       { $match: query },
       { $skip: (Number(PageParam) - 1) * Number(perPageParam) },
       { $limit: +perPageParam },
-      // {$lookup: {
-      //   from: "",
-      //   localField: "",
-      //   foreignField: "_id",
-      //   as: "",
-      // }},
+      {
+        $lookup: {
+          from: "tags",
+          localField: "tags",
+          foreignField: "_id",
+          as: "tags",
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "user",
+          foreignField: "_id",
+          as: "assignee",
+        },
+      },
+      {
+        $lookup: {
+          from: "columns",
+          localField: "column",
+          foreignField: "_id",
+          as: "column",
+        },
+      },
     ]);
     res.status(200).json({
       data: tasks,
@@ -131,14 +172,17 @@ app.post("/tasks", async (req, res) => {
     title,
     description,
     link,
-    tags,
+    tagsID,
     dueDate,
-    assignee,
-    column,
+    assigneeID,
+    columnID,
     comments,
   } = req.body;
 
   try {
+    const tags = await Tag.find(tagsID);
+    const assignee = await User.findById(assigneeID);
+    const column = await Column.findById(columnID);
     const task = await new Task({
       title,
       description,
@@ -167,14 +211,17 @@ app.put("/tasks/:taskId", async (req, res) => {
     title,
     description,
     link,
-    tags,
+    tagsID,
     dueDate,
-    assignee,
-    column,
+    assigneeID,
+    columnID,
     comments,
   } = req.body;
 
   try {
+    const tags = await Tag.find(tagsID);
+    const assignee = await User.findById(assigneeID);
+    const column = await Column.findById(columnID);
     const task = await Task.findByIdAndUpdate(
       taskId,
       { title, description, link, tags, dueDate, assignee, column, comments },
@@ -263,11 +310,33 @@ app.get("/users", async (req, res) => {
 });
 
 // v1
-app.post("/users", async (req, res) => {
+// app.post("/users", async (req, res) => {
+//   const { name, description, imageURL } = req.body;
+
+//   try {
+//     const user = await new User({ name, description, imageURL }).save();
+//     res.status(201).json({
+//       data: user,
+//       success: true,
+//     });
+//   } catch (error) {
+//     res.status(400).json({
+//       data: error,
+//       success: false,
+//     });
+//   }
+// });
+
+// v2
+app.post("/users", parser.single("image"), async (req, res) => {
   const { name, description, imageURL } = req.body;
 
   try {
-    const user = await new User({ name, description, imageURL }).save();
+    const user = await new User({
+      name,
+      description,
+      imageURL: req.file.path,
+    }).save();
     res.status(201).json({
       data: user,
       success: true,
@@ -280,17 +349,38 @@ app.post("/users", async (req, res) => {
   }
 });
 
-// v2
-
 //  v1
-app.put("/users/:userId", async (req, res) => {
+// app.put("/users/:userId", async (req, res) => {
+//   const { userId } = req.params;
+//   const { name, description, imageURL } = req.body;
+
+//   try {
+//     const user = await User.findByIdAndUpdate(
+//       userId,
+//       { name, description, imageURL },
+//       { new: true, runValidators: true }
+//     );
+//     res.status(201).json({
+//       data: user,
+//       success: true,
+//     });
+//   } catch (error) {
+//     res.status(400).json({
+//       data: error,
+//       success: false,
+//     });
+//   }
+// });
+
+// v2
+app.put("/users/:userId", parser.single("image"), async (req, res) => {
   const { userId } = req.params;
   const { name, description, imageURL } = req.body;
 
   try {
     const user = await User.findByIdAndUpdate(
       userId,
-      { name, description, imageURL },
+      { name, description, imageURL: req.file.path },
       { new: true, runValidators: true }
     );
     res.status(201).json({
@@ -304,8 +394,6 @@ app.put("/users/:userId", async (req, res) => {
     });
   }
 });
-
-// v2
 
 // COLUMNS
 app.get("/columns", async (req, res) => {
