@@ -121,9 +121,9 @@ app.get("/tasks", async (req, res) => {
   const { assignee, column, tags, page, perPage } = req.query;
 
   const query = {
-    ...(assignee && { assignee: new RegExp(assignee, "i") }),
-    ...(column && { column: new RegExp(column, "i") }),
-    ...(tags && { tags: new RegExp(tags, "i") }),
+    ...(assignee && { assignee: mongoose.Types.ObjectId(assignee) }),
+    ...(column && { column: mongoose.Types.ObjectId(column) }),
+    ...(tags && { tags: mongoose.Types.ObjectId(tags) }),
   };
 
   const PageParam = page || 1;
