@@ -50,27 +50,31 @@ const TaskSchema = new mongoose.Schema({
     type: String,
     required: [true, "Task has to have a link attached"],
   },
-  tags: {
-    type: [mongoose.Schema.Types.ObjectId],
-    ref: "Tag",
-    required: [true, "Task has to have tag(s) assigned"],
-  },
+  tags: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Tag",
+      required: [true, "Task has to have tag(s) assigned"],
+    },
+  ],
   dueDate: {
     type: Date,
-    default: new Date().toDateString(),
+    required: true,
   },
   assignee: {
-    type: [mongoose.Schema.Types.ObjectId],
+    type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: [true, "Task has to have an assignee"],
   },
   column: {
-    type: [mongoose.Schema.Types.ObjectId],
+    type: mongoose.Schema.Types.ObjectId,
     ref: "Column",
   },
-  comments: {
-    type: Array,
-  },
+  comments: [
+    {
+      type: String,
+    },
+  ],
 });
 
 const TagSchema = new mongoose.Schema({
@@ -172,25 +176,25 @@ app.post("/tasks", async (req, res) => {
     title,
     description,
     link,
-    tagsID,
+    tags,
     dueDate,
-    assigneeID,
-    columnID,
+    assignee,
+    column,
     comments,
   } = req.body;
 
   try {
-    const tags = await Tag.find(tagsID);
-    const assignee = await User.findById(assigneeID);
-    const column = await Column.findById(columnID);
+    const queriedTags = await Tag.find({ _id: { $in: tags } });
+    const queriedAssignee = await User.findById(assignee);
+    const queriedColumn = await Column.findById(column);
     const task = await new Task({
       title,
       description,
       link,
-      tags,
+      tags: queriedTags,
       dueDate,
-      assignee,
-      column,
+      assignee: queriedAssignee,
+      column: queriedColumn,
       comments,
     }).save();
     res.status(201).json({
@@ -211,20 +215,29 @@ app.put("/tasks/:taskId", async (req, res) => {
     title,
     description,
     link,
-    tagsID,
+    tags,
     dueDate,
-    assigneeID,
-    columnID,
+    assignee,
+    column,
     comments,
   } = req.body;
 
   try {
-    const tags = await Tag.find(tagsID);
-    const assignee = await User.findById(assigneeID);
-    const column = await Column.findById(columnID);
+    const queriedTags = await Tag.find({ _id: { $in: tags } });
+    const queriedAssignee = await User.findById(assignee);
+    const queriedColumn = await Column.findById(column);
     const task = await Task.findByIdAndUpdate(
       taskId,
-      { title, description, link, tags, dueDate, assignee, column, comments },
+      {
+        title,
+        description,
+        link,
+        tags: queriedTags,
+        dueDate,
+        assignee: queriedAssignee,
+        column: queriedColumn,
+        comments,
+      },
       { new: true, runValidators: true }
     );
     res.status(201).json({
