@@ -1,4 +1,4 @@
-# Sprint 8 project
+# To Do App - REST API
 
 ## Documentation
 
